@@ -140,8 +140,7 @@ def _parse_output_using_regex(content: str) -> list[lsp.Diagnostic]:
     for line in lines:
         if line.startswith("'") and line.endswith("'"):
             line = line[1:-1]
-        match = DIAGNOSTIC_RE.match(line)
-        if match:
+        if match := DIAGNOSTIC_RE.match(line):
             data = match.groupdict()
             position = lsp.Position(
                 line=max([int(data["line"]) - line_offset, 0]),
@@ -195,13 +194,7 @@ def formatting(params: lsp.DocumentFormattingParams) -> list[lsp.TextEdit] | Non
     # objects, to provide your formatted results.
 
     document = LSP_SERVER.workspace.get_document(params.text_document.uri)
-    edits = _formatting_helper(document)
-    if edits:
-        return edits
-
-    # NOTE: If you provide [] array, VS Code will clear the file of all contents.
-    # To indicate no changes to file return None.
-    return None
+    return edits if (edits := _formatting_helper(document)) else None
 
 
 def _formatting_helper(document: workspace.Document) -> list[lsp.TextEdit] | None:
@@ -227,9 +220,7 @@ def _formatting_helper(document: workspace.Document) -> list[lsp.TextEdit] | Non
 def _get_line_endings(lines: list[str]) -> str:
     """Returns line endings used in the text."""
     try:
-        if lines[0][-2:] == "\r\n":
-            return "\r\n"
-        return "\n"
+        return "\r\n" if lines[0][-2:] == "\r\n" else "\n"
     except Exception:  # pylint: disable=broad-except
         return None
 
@@ -359,21 +350,7 @@ def _run_tool_on_document(
 
     argv += TOOL_ARGS + settings["args"] + extra_args
 
-    if use_stdin:
-        # TODO: update these to pass the appropriate arguments to provide document contents
-        # to tool via stdin.
-        # For example, for pylint args for stdin looks like this:
-        #     pylint --from-stdin <path>
-        # Here `--from-stdin` path is used by pylint to make decisions on the file contents
-        # that are being processed. Like, applying exclusion rules.
-        # It should look like this when you pass it:
-        #     argv += ["--from-stdin", document.path]
-        # Read up on how your tool handles contents via stdin. If stdin is not supported use
-        # set use_stdin to False, or provide path, what ever is appropriate for your tool.
-        argv += []
-    else:
-        argv += [document.path]
-
+    argv += [] if use_stdin else [document.path]
     if use_path:
         # This mode is used when running executables.
         log_to_output(" ".join(argv))
